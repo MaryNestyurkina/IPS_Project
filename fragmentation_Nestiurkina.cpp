@@ -116,8 +116,7 @@ unsigned int low_level_fragmentation::FindTreeDepth()
 int low_level_fragmentation::ClasifyBox(const min_max_vectors& vects)
 {
 	// Определили функцию
-	int maxCount = 0;
-	int minCount = 0;
+	int count = 0;
 	int firstL = vects.first.size();
 	int secondL = vects.second.size();
 
@@ -125,11 +124,11 @@ int low_level_fragmentation::ClasifyBox(const min_max_vectors& vects)
 
 	for (int i = 0; i < 4; i++)
 	{
-		if (vects.first[i] < 0) maxCount++; //Проверка выполнения условия 4
+		if (vects.first[i] < 0) count++; //Проверка выполнения условия 4
 		if (vects.second[i] > 0) return 0; //Проверка выполнения условия 5
 	}
 
-	if (maxCount == 4) return 1;
+	if (count == 4) return 1;
 	else return 2; //Разбиваем на 2 новых		
 }
 //------------------------------------------------------------------------------------------
@@ -156,7 +155,7 @@ void low_level_fragmentation::GetBoxType(const Box& box)
 		temporary_boxes.push_back(pair.second);
 	}
 
-	if (type == 3) //Пригр
+	if (type == 3) //Граница
 		boundary.push_back(box);
 }
 //------------------------------------------------------------------------------------------
@@ -240,49 +239,46 @@ void high_level_analysis::GetMinMax(const Box& box, min_max_vectors& min_max_vec
 //------------------------------------------------------------------------------------------
 void high_level_analysis::GetSolution()
 {
-	//должны фигурировать два вложенных цикла. Внешний цикл проходит по всем уровням двоичного дерева разбиения. 
-	//В рамках внутреннего цикла происходит перебор всех box-ов текущего уровня разбиения и определение типа box-а 
-	//(является он частью рабочего пространства либо не является, лежит он на границе или подлежит дальнейшему анализу). 
-
+	// Определии функцию
 	int length = FindTreeDepth() + 1;
 	boxes_pair pair;
 	temporary_boxes.push_back(current_box);
 
 	for (int i = 0; i < length; i++) {
 		int number_of_box_on_level = temporary_boxes.size();
-		vector<Box> curr_boxes(temporary_boxes);
+		vector<Box> current_boxes(temporary_boxes);
 		temporary_boxes.clear();
 		for (int j = 0; j < number_of_box_on_level; j++) {
-			GetBoxType(curr_boxes[j]);
+			GetBoxType(current_boxes[j]);
 		}
 	}
 }
 //------------------------------------------------------------------------------------------
 void WriteResults(const char* file_names[])
 {
-	// необходимо определить функцию
+	// Определии функцию
 	double _xmin, _xmax, _w, _h;
-	ofstream fout(file_names[0]);
-	fout << "x_min"  << "\t" << "y_min" << "\t" << "width" << "\t" << "height" << endl;
+	ofstream sol(file_names[0]);
+	sol << "x_min"  << "\t" << "y_min" << "\t" << "width" << "\t" << "height" << endl;
 	for (int i = 0; i < solution.size(); i++) {
 		solution[i].GetParameters(_xmin, _xmax, _w, _h);
-		fout << _xmin << "\t" << _xmax << "\t" << _w << "\t" << _h << endl;
+		sol << _xmin << "\t" << _xmax << "\t" << _w << "\t" << _h << endl;
 	}
-	fout.close();
+	sol.close();
 
-	ofstream fout1(file_names[1]);
-	fout1 << "x_min" << "\t" << "y_min" << "\t" << "width" << "\t" << "height" << endl;
+	ofstream nsol(file_names[1]);
+	nsol << "x_min" << "\t" << "y_min" << "\t" << "width" << "\t" << "height" << endl;
 	for (int i = 0; i < not_solution.size(); i++) {
 		not_solution[i].GetParameters(_xmin, _xmax, _w, _h);
-		fout1 << _xmin << "\t" << _xmax << "\t" << _w << "\t" << _h << endl;
+		nsol << _xmin << "\t" << _xmax << "\t" << _w << "\t" << _h << endl;
 	}
-	fout1.close();
+	nsol.close();
 
-	ofstream fout2(file_names[2]);
-	fout2 << "x_min" << "\t" << "y_min" << "\t" << "width" << "\t" << "height" << endl;
+	ofstream bndr(file_names[2]);
+	bndr << "x_min" << "\t" << "y_min" << "\t" << "width" << "\t" << "height" << endl;
 	for (int i = 0; i < boundary.size(); i++) {
 		boundary[i].GetParameters(_xmin, _xmax, _w, _h);
-		fout2 << _xmin << "\t" << _xmax << "\t" << _w << "\t" << _h << endl;
+		bndr << _xmin << "\t" << _xmax << "\t" << _w << "\t" << _h << endl;
 	}
-	fout2.close();
+	bndr.close();
 }
