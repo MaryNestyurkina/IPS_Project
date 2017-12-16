@@ -3,14 +3,11 @@
 
 
 using namespace std;
-/// вектор, содержащий box-ы, являющиеся частью рабочего пространства
-vector<Box> solution;
-/// вектор, содержащий box-ы, не являющиеся частью рабочего пространства
-vector<Box> not_solution;
-/// вектор, содержащий box-ы, находящиеся на границе между "рабочим" и "нерабочим" пространством
-vector<Box> boundary;
-/// вектор, хранящий box-ы, анализируемые на следующей итерации алгоритма
-vector<Box> temporary_boxes;
+
+cilk::reducer<cilk::op_vector<Box>>solution;
+cilk::reducer<cilk::op_vector<Box>>not_solution;
+cilk::reducer<cilk::op_vector<Box>>boundary;
+cilk::reducer<cilk::op_vector<Box>>temporary_boxes;
 
 using namespace std;
 /// функции gj()
@@ -62,7 +59,7 @@ void low_level_fragmentation::HorizontalSplitter(const Box& box, boxes_pair& hor
 	double x, y, width, height;
 	box.GetParameters(x, y, width, height);
 	horizontal_splitter_pair.first = Box(x, y, width, height / 2);
-	horizontal_splitter_pair.second = Box(x, y + h / 2, width, height / 2);
+	horizontal_splitter_pair.second = Box(x, y + height / 2, width, height / 2);
 }
 //------------------------------------------------------------------------------------------
 void low_level_fragmentation::GetNewBoxes(const Box& box, boxes_pair& new_pair_of_boxes)
@@ -144,19 +141,19 @@ void low_level_fragmentation::GetBoxType(const Box& box)
 	type = ClasifyBox(vecs);
 
 	if (type == 0) //Убираем прямоугольник из рассмотрения
-		not_solution.push_back(box);
+		not_solution->push_back(box);
 
 	if (type == 1) //Прямоугольник, в котором есть решение (нужный экстремум)
-		solution.push_back(box);
+		solution->push_back(box);
 
 	if (type == 2) { //Прямоугольник, который надо разбить
 		GetNewBoxes(box, pair);
-		temporary_boxes.push_back(pair.first);
-		temporary_boxes.push_back(pair.second);
+		temporary_boxes->push_back(pair.first);
+		temporary_boxes->push_back(pair.second);
 	}
 
 	if (type == 3) //Граница
-		boundary.push_back(box);
+		boundary->push_back(box);
 }
 //------------------------------------------------------------------------------------------
 high_level_analysis::high_level_analysis(double& min_x, double& min_y, double& x_width, double& y_height) :
@@ -239,17 +236,22 @@ void high_level_analysis::GetMinMax(const Box& box, min_max_vectors& min_max_vec
 //------------------------------------------------------------------------------------------
 void high_level_analysis::GetSolution()
 {
-	// Определии функцию
-	int length = FindTreeDepth() + 1;
+	// Определили функцию
+	int length = FindTreeDepth()+1;	
 	boxes_pair pair;
-	temporary_boxes.push_back(current_box);
+	temporary_boxes->push_back(current_box);
 
-	for (int i = 0; i < length; i++) {
-		int number_of_box_on_level = temporary_boxes.size();
-		vector<Box> current_boxes(temporary_boxes);
-		temporary_boxes.clear();
-		for (int j = 0; j < number_of_box_on_level; j++) {
-			GetBoxType(current_boxes[j]);
+	for (int i = 0; i < length; i++) 
+	{
+		vector<Box> tmp;
+		temporary_boxes.move_out(tmp);
+		int number_of_box_on_level = tmp.size();
+		vector<Box> curr_boxes(tmp);
+		tmp.clear();
+		temporary_boxes.set_value(tmp);
+		cilk_for (int j = 0; j < number_of_box_on_level; j++)
+		{ 
+			GetBoxType(curr_boxes[j]);
 		}
 	}
 }
@@ -259,25 +261,31 @@ void WriteResults(const char* file_names[])
 	// Определии функцию
 	double _xmin, _xmax, _w, _h;
 	ofstream sol(file_names[0]);
+	vector<Box> sltn;
+	solution.move_out(sltn);
 	sol << "x_min"  << "\t" << "y_min" << "\t" << "width" << "\t" << "height" << endl;
 	for (int i = 0; i < solution.size(); i++) {
-		solution[i].GetParameters(_xmin, _xmax, _w, _h);
+		sltn[i].GetParameters(_xmin, _xmax, _w, _h);
 		sol << _xmin << "\t" << _xmax << "\t" << _w << "\t" << _h << endl;
 	}
 	sol.close();
 
 	ofstream nsol(file_names[1]);
+	vector<Box> nsltn;
+	not_solution.move_out(nsltn);
 	nsol << "x_min" << "\t" << "y_min" << "\t" << "width" << "\t" << "height" << endl;
 	for (int i = 0; i < not_solution.size(); i++) {
-		not_solution[i].GetParameters(_xmin, _xmax, _w, _h);
+		nsltn[i].GetParameters(_xmin, _xmax, _w, _h);
 		nsol << _xmin << "\t" << _xmax << "\t" << _w << "\t" << _h << endl;
 	}
 	nsol.close();
 
 	ofstream bndr(file_names[2]);
+	vector<Box> bndr;
+	boundary.move_out(bndr);
 	bndr << "x_min" << "\t" << "y_min" << "\t" << "width" << "\t" << "height" << endl;
 	for (int i = 0; i < boundary.size(); i++) {
-		boundary[i].GetParameters(_xmin, _xmax, _w, _h);
+		bndr[i].GetParameters(_xmin, _xmax, _w, _h);
 		bndr << _xmin << "\t" << _xmax << "\t" << _w << "\t" << _h << endl;
 	}
 	bndr.close();
