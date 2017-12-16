@@ -2,6 +2,7 @@
 #include <locale.h>
 #include <chrono>
 #include <iostream>
+#include <cilk/cilk_api.h>
 
 using namespace std;
 using namespace chrono;
@@ -24,12 +25,15 @@ int main()
 
 	high_resolution_clock::time_point start, end;
 	start = high_resolution_clock::now(); //засекли время
+	__cilkrts_end_cilk();
+	__cilkrts_set_param("nworkers", "4");
 	high_level_analysis main_object(a, b, c, d);
 
 	main_object.GetSolution();
 	end = high_resolution_clock::now();
 	duration<double> duration = (end - start);
-
+	
+	cout << "Количество вычилителей: " << __cilkrts_get_nworkers() << endl;
 	cout << "Время исполнения кода: " << duration.count() << " секунд" << std::endl;
 
 	// Внимание! здесь необходимо определить пути до выходных файлов!
