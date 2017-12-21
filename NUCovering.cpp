@@ -21,13 +21,11 @@ int main()
 {
 	setlocale(LC_ALL, "Rus");
 
-	double a = -10, b = 0, c = 24, d = 16;
-
 	high_resolution_clock::time_point start, end;
 	start = high_resolution_clock::now(); //засекли время
 	__cilkrts_end_cilk();
 	__cilkrts_set_param("nworkers", "4");
-	high_level_analysis main_object(a, b, c, d);
+	high_level_analysis main_object(g_l0 *(-2), g_l0 * 0, g_l1_min * 3, g_l1_min * 2);
 
 	main_object.GetSolution();
 	end = high_resolution_clock::now();
