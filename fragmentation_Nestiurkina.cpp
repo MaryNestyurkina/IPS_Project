@@ -85,7 +85,7 @@ unsigned int low_level_fragmentation::FindTreeDepth()
 		boxes_pair new_boxes;
 		// допустим, разобьем начальную область по ширине
 		VerticalSplitter(current_box, new_boxes);
-		unsigned int tree_depth = 1;
+ 		unsigned int tree_depth = 1;
 		box_diagonal = new_boxes.first.GetDiagonal();
 
 		if (box_diagonal <= g_precision)
@@ -117,7 +117,7 @@ int low_level_fragmentation::ClasifyBox(const min_max_vectors& vects)
 	int firstL = vects.first.size();
 	int secondL = vects.second.size();
 
-	if (vects.first[0] == 0) return 3; //Граница прямоугольника
+	if (vects.first[0] == 0 && vects.second[0] == 0) return 3; //Граница прямоугольника
 
 	for (int i = 0; i < 4; i++)
 	{
